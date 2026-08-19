@@ -22,12 +22,12 @@ export interface FieldLabels {
 }
 
 export const DEFAULT_LABELS: FieldLabels = {
-  cosplayer: "Cosplayer",
-  cosplayerPlural: "Cosplayers",
-  character: "Character",
-  characterPlural: "Characters",
-  set: "Set",
-  setPlural: "Sets",
+  cosplayer: "Artist",
+  cosplayerPlural: "Artists",
+  character: "Subject",
+  characterPlural: "Subjects",
+  set: "Album",
+  setPlural: "Albums",
   tag: "Tag",
   tagPlural: "Tags",
   event: "Event",
