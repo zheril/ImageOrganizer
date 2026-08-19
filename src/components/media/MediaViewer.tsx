@@ -17,6 +17,7 @@ export function MediaViewer() {
   const [showMeta, setShowMeta] = useState(true);
   const [zoom, setZoom] = useState<number>(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [fullImageUrl, setFullImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [focusMode, setFocusMode] = useState(false); // hides chrome for immersive viewing
 
@@ -27,33 +28,85 @@ export function MediaViewer() {
 
   const list = viewer.listIds ?? [];
 
-  // For local files, resolve a fresh blob URL on demand (remote seed URLs work directly).
+  // Load full resolution media URL (image or video)
   useEffect(() => {
-    if (!media || media.kind !== "video") {
+    if (!media) {
+      setFullImageUrl(null);
       setVideoUrl(null);
       return;
     }
+
     let cancelled = false;
     let createdUrl: string | null = null;
+
     (async () => {
       if (media.sourceUrl.startsWith("http")) {
-        if (!cancelled) setVideoUrl(media.sourceUrl);
+        if (!cancelled) {
+          if (media.kind === "image") setFullImageUrl(media.sourceUrl);
+          else setVideoUrl(media.sourceUrl);
+        }
         return;
       }
+
       const { getFileForMedia } = await import("@/lib/fs");
       const file = await getFileForMedia(media);
-      if (!file) {
-        if (!cancelled) setVideoUrl(null);
-        return;
-      }
+      if (!file || cancelled) return;
+
       createdUrl = URL.createObjectURL(file);
-      if (!cancelled) setVideoUrl(createdUrl);
+      if (!cancelled) {
+        if (media.kind === "image") setFullImageUrl(createdUrl);
+        else setVideoUrl(createdUrl);
+      }
     })();
+
     return () => {
       cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [media?.id, media?.kind, media?.sourceUrl]);
+
+  // Preload next and previous full resolution images in array for instant viewing
+  useEffect(() => {
+    if (!viewer.open || !viewer.mediaId || list.length <= 1) return;
+    const currentIndex = list.indexOf(viewer.mediaId);
+    if (currentIndex === -1) return;
+
+    const indicesToPreload = [
+      (currentIndex + 1) % list.length,
+      (currentIndex - 1 + list.length) % list.length,
+    ];
+
+    const createdUrls: string[] = [];
+    let cancelled = false;
+
+    (async () => {
+      for (const idx of indicesToPreload) {
+        const id = list[idx];
+        if (!id || id === viewer.mediaId) continue;
+        const targetMedia = await db.media.get(id);
+        if (!targetMedia || targetMedia.kind !== "image" || cancelled) continue;
+
+        if (targetMedia.sourceUrl.startsWith("http")) {
+          const img = new Image();
+          img.src = targetMedia.sourceUrl;
+        } else {
+          const { getFileForMedia } = await import("@/lib/fs");
+          const file = await getFileForMedia(targetMedia);
+          if (file && !cancelled) {
+            const url = URL.createObjectURL(file);
+            createdUrls.push(url);
+            const img = new Image();
+            img.src = url;
+          }
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      createdUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [viewer.open, viewer.mediaId, list]);
 
   // Helpers (declared before effects so keyboard handler can reference them)
   function nav(dir: -1 | 1) {
@@ -166,21 +219,30 @@ export function MediaViewer() {
           />
         ) : (
           <div
-            className="max-h-full max-w-full"
+            className="max-h-full max-w-full flex items-center justify-center"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transition: "transform 0.1s ease-out",
               cursor: zoom !== 1 ? "grab" : "default",
             }}
           >
-            <MediaThumbnail
-              key={media.id}
-              media={media}
-              size="large"
-              directFallback={false}
-              alt={media.filename}
-              className="max-h-[90vh] max-w-[90vw] rounded-md"
-            />
+            {fullImageUrl ? (
+              <img
+                src={fullImageUrl}
+                alt={media.filename}
+                draggable={false}
+                className="max-h-[90vh] max-w-[90vw] object-contain rounded-md shadow-2xl select-none"
+              />
+            ) : (
+              <MediaThumbnail
+                key={media.id}
+                media={media}
+                size="large"
+                directFallback={false}
+                alt={media.filename}
+                className="max-h-[90vh] max-w-[90vw] rounded-md"
+              />
+            )}
           </div>
         )}
 

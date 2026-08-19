@@ -1,12 +1,12 @@
 import { db, type Media } from "@/lib/db/dexie";
 import { getFileForMedia } from "@/lib/fs";
 
-// Multiple thumbnail sizes (longest edge in px)
+// Multiple thumbnail sizes (longest edge in px) - optimized for fast rendering
 export const SIZES = {
-  tiny: 96,
-  medium: 320,
-  large: 800,
-  poster: 640, // video poster
+  tiny: 80,
+  medium: 280,
+  large: 640,
+  poster: 480, // video poster
 } as const;
 
 export type ThumbSize = keyof typeof SIZES;
@@ -38,7 +38,12 @@ async function imageThumbBlob(
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
-  const blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.82 });
+  let blob: Blob;
+  try {
+    blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.70 });
+  } catch {
+    blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.70 });
+  }
   return { blob, width: w, height: h };
 }
 
@@ -85,7 +90,7 @@ async function videoPosterBlob(
             else reject(new Error("Failed to capture video frame"));
           },
           "image/webp",
-          0.82,
+          0.70,
         );
       } catch (e) {
         URL.revokeObjectURL(url);

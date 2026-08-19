@@ -118,9 +118,9 @@ export function SettingsView() {
           <NavCustomizeRow itemKey="favorites" defaultLabel="Favorites" />
           <NavCustomizeRow itemKey="recently-added" defaultLabel="Recently Added" />
           <NavCustomizeRow itemKey="recently-viewed" defaultLabel="Recently Viewed" />
-          <NavCustomizeRow itemKey="cosplayers" defaultLabel="Cosplayers" plural />
-          <NavCustomizeRow itemKey="characters" defaultLabel="Characters" plural />
-          <NavCustomizeRow itemKey="sets" defaultLabel="Sets" plural />
+          <NavCustomizeRow itemKey="cosplayers" defaultLabel="Artists" plural />
+          <NavCustomizeRow itemKey="characters" defaultLabel="Subjects" plural />
+          <NavCustomizeRow itemKey="sets" defaultLabel="Albums" plural />
           <NavCustomizeRow itemKey="tags" defaultLabel="Tags" plural />
           <NavCustomizeRow itemKey="events" defaultLabel="Events" plural />
           <NavCustomizeRow itemKey="locations" defaultLabel="Locations" plural />
@@ -130,15 +130,15 @@ export function SettingsView() {
         {/* Field labels */}
         <Section icon={<WandSparkles className="h-4 w-4" />} title="Field labels">
           <p className="text-xs text-muted-foreground px-4 py-2">
-            Rename the hierarchy levels to fit your use case. For example, rename "Cosplayer" → "Photographer" to repurpose Cosvault for general photography.
+            Rename the hierarchy levels to fit your use case. For example, rename "Artist" → "Photographer" to repurpose Cosvault for general photography.
             Labels update everywhere in the UI (sidebar, headings, buttons, dialogs).
           </p>
-          <FieldLabelRow field="cosplayer" label="Cosplayer (singular)" />
-          <FieldLabelRow field="cosplayerPlural" label="Cosplayer (plural)" />
-          <FieldLabelRow field="character" label="Character (singular)" />
-          <FieldLabelRow field="characterPlural" label="Character (plural)" />
-          <FieldLabelRow field="set" label="Set (singular)" />
-          <FieldLabelRow field="setPlural" label="Set (plural)" />
+          <FieldLabelRow field="cosplayer" label="Artist (singular)" />
+          <FieldLabelRow field="cosplayerPlural" label="Artist (plural)" />
+          <FieldLabelRow field="character" label="Subject (singular)" />
+          <FieldLabelRow field="characterPlural" label="Subject (plural)" />
+          <FieldLabelRow field="set" label="Album (singular)" />
+          <FieldLabelRow field="setPlural" label="Album (plural)" />
           <FieldLabelRow field="tag" label="Tag (singular)" />
           <FieldLabelRow field="tagPlural" label="Tag (plural)" />
           <FieldLabelRow field="event" label="Event (singular)" />
