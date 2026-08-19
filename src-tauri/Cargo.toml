@@ -1,0 +1,27 @@
+[package]
+name = "cosvault"
+version = "0.1.0"
+description = "Local-first cosplay photo & video organizer"
+authors = ["Cosvault"]
+edition = "2021"
+rust-version = "1.70"
+
+# Library crate so we can reuse the entry point on desktop + mobile targets.
+[lib]
+name = "cosvault_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# by default Tauri runs in production mode (built-in release optimizations)
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
