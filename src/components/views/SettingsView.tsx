@@ -130,21 +130,15 @@ export function SettingsView() {
         {/* Field labels */}
         <Section icon={<WandSparkles className="h-4 w-4" />} title="Field labels">
           <p className="text-xs text-muted-foreground px-4 py-2">
-            Rename the hierarchy levels to fit your use case. For example, rename "Artist" → "Photographer" to repurpose Cosvault for general photography.
+            Rename sidebar navigation and hierarchy items to fit your use case.
             Labels update everywhere in the UI (sidebar, headings, buttons, dialogs).
           </p>
-          <FieldLabelRow field="cosplayer" label="Artist (singular)" />
-          <FieldLabelRow field="cosplayerPlural" label="Artist (plural)" />
-          <FieldLabelRow field="character" label="Subject (singular)" />
-          <FieldLabelRow field="characterPlural" label="Subject (plural)" />
-          <FieldLabelRow field="set" label="Album (singular)" />
-          <FieldLabelRow field="setPlural" label="Album (plural)" />
-          <FieldLabelRow field="tag" label="Tag (singular)" />
-          <FieldLabelRow field="tagPlural" label="Tag (plural)" />
-          <FieldLabelRow field="event" label="Event (singular)" />
-          <FieldLabelRow field="eventPlural" label="Event (plural)" />
-          <FieldLabelRow field="location" label="Location (singular)" />
-          <FieldLabelRow field="locationPlural" label="Location (plural)" />
+          <FieldLabelRow field="cosplayerPlural" label="Artists (Hierarchy Level 1)" />
+          <FieldLabelRow field="characterPlural" label="Subjects (Hierarchy Level 2)" />
+          <FieldLabelRow field="setPlural" label="Albums (Hierarchy Level 3)" />
+          <FieldLabelRow field="tagPlural" label="Tags" />
+          <FieldLabelRow field="eventPlural" label="Events" />
+          <FieldLabelRow field="locationPlural" label="Locations" />
           <Row label="Reset to defaults" hint="Restore all labels and sidebar visibility to factory defaults.">
             <Button
               variant="outline"

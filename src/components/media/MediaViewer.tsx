@@ -159,6 +159,20 @@ export function MediaViewer() {
   useEffect(() => {
     if (!viewer.open) return;
     const onKey = (e: KeyboardEvent) => {
+      // Ignore shortcut keys if user is typing inside an input, textarea, or contentEditable element
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        if (e.key === "Escape") {
+          target.blur();
+        }
+        return;
+      }
+
       if (e.key === "Escape") {
         if (focusMode) {
           setFocusMode(false);
@@ -195,7 +209,7 @@ export function MediaViewer() {
   const idx = list.indexOf(media.id);
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-black/95 backdrop-blur-md text-white">
+    <div className="fixed inset-0 z-50 flex bg-black/98 backdrop-blur-xl text-white">
       {/* Image area */}
       <div
         className="relative flex-1 flex items-center justify-center overflow-hidden"
@@ -268,7 +282,7 @@ export function MediaViewer() {
 
         {/* Top bar — hidden in focus mode */}
         {!focusMode && (
-          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-3 bg-gradient-to-b from-black/60 to-transparent">
+          <div className="absolute top-0 left-0 right-0 flex flex-wrap items-center justify-between gap-2 p-3 bg-gradient-to-b from-black/90 via-black/60 to-transparent backdrop-blur-md z-20">
             <div className="flex items-center gap-2 text-sm">
               <span className="font-mono text-white/80">{media.filename}</span>
               {media.width && media.height && (
@@ -294,6 +308,25 @@ export function MediaViewer() {
               <ViewerBtn onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>
                 Fit
               </ViewerBtn>
+              <div className="flex items-center gap-0.5 mx-2 bg-white/10 rounded-md px-1 py-0.5">
+                {[1, 2, 3, 4, 5].map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRating(media, r)}
+                    className="p-1 hover:scale-110 transition"
+                    title={`Rate ${r} star${r > 1 ? "s" : ""}`}
+                  >
+                    <Star
+                      className={cn(
+                        "h-3.5 w-3.5 transition",
+                        r <= media.rating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-white/40 hover:text-white",
+                      )}
+                    />
+                  </button>
+                ))}
+              </div>
               <ViewerBtn onClick={() => setShowMeta((s) => !s)} title="Toggle info panel (I)">
                 <Info className="h-4 w-4" />
               </ViewerBtn>
@@ -330,29 +363,6 @@ export function MediaViewer() {
           </button>
         )}
 
-        {/* Bottom controls — hidden in focus mode */}
-        {!focusMode && (
-          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 p-3 bg-gradient-to-t from-black/70 to-transparent">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRating(media, r)}
-                  className="p-1"
-                >
-                  <Star
-                    className={cn(
-                      "h-5 w-5 transition",
-                      r <= media.rating
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-white/40 hover:text-white",
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Right meta panel — hidden in focus mode */}
