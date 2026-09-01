@@ -27,13 +27,15 @@ async function mediaThumbKey(m: Media): Promise<string> {
 async function imageThumbBlob(
   file: Blob,
   size: ThumbSize,
-): Promise<{ blob: Blob; width: number; height: number }> {
+): Promise<{ blob: Blob; width: number; height: number; naturalWidth: number; naturalHeight: number }> {
   const bitmap = await createImageBitmap(file);
-  const longest = Math.max(bitmap.width, bitmap.height);
+  const naturalWidth = bitmap.width;
+  const naturalHeight = bitmap.height;
+  const longest = Math.max(naturalWidth, naturalHeight);
   const target = SIZES[size];
   const scale = longest > target ? target / longest : 1;
-  const w = Math.max(1, Math.round(bitmap.width * scale));
-  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const w = Math.max(1, Math.round(naturalWidth * scale));
+  const h = Math.max(1, Math.round(naturalHeight * scale));
   const canvas = new OffscreenCanvas(w, h);
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, w, h);
@@ -44,7 +46,7 @@ async function imageThumbBlob(
   } catch {
     blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.70 });
   }
-  return { blob, width: w, height: h };
+  return { blob, width: w, height: h, naturalWidth, naturalHeight };
 }
 
 // ---------- Video poster ----------
@@ -157,10 +159,10 @@ export async function getThumbnail(
       createdAt: Date.now(),
     });
     // Also extract natural dimensions if missing for images
-    if (m.kind === "image" && (!m.width || !m.height)) {
+    if (m.kind === "image" && "naturalWidth" in result && result.naturalWidth && result.naturalHeight) {
       await db.media.update(m.id, {
-        width: result.width,
-        height: result.height,
+        width: result.naturalWidth,
+        height: result.naturalHeight,
       });
     }
     return {

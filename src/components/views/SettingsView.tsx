@@ -5,7 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/dexie";
 import { seedDatabaseIfEmpty } from "@/lib/db/seed";
 import { useConfig, DEFAULT_LABELS, DEFAULT_NAV_VISIBILITY, type ViewKey, type FieldLabels } from "@/lib/store/config";
-import { Settings as SettingsIcon, Trash2, Database, Moon, Sun, HardDriveDownload, Sparkles, WandSparkles, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { Settings as SettingsIcon, Trash2, Database, Moon, Sun, HardDriveDownload, Sparkles, WandSparkles, Eye, EyeOff, RotateCcw, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -130,21 +130,15 @@ export function SettingsView() {
         {/* Field labels */}
         <Section icon={<WandSparkles className="h-4 w-4" />} title="Field labels">
           <p className="text-xs text-muted-foreground px-4 py-2">
-            Rename the hierarchy levels to fit your use case. For example, rename "Artist" → "Photographer" to repurpose Cosvault for general photography.
+            Rename sidebar navigation and hierarchy items to fit your use case.
             Labels update everywhere in the UI (sidebar, headings, buttons, dialogs).
           </p>
-          <FieldLabelRow field="cosplayer" label="Artist (singular)" />
-          <FieldLabelRow field="cosplayerPlural" label="Artist (plural)" />
-          <FieldLabelRow field="character" label="Subject (singular)" />
-          <FieldLabelRow field="characterPlural" label="Subject (plural)" />
-          <FieldLabelRow field="set" label="Album (singular)" />
-          <FieldLabelRow field="setPlural" label="Album (plural)" />
-          <FieldLabelRow field="tag" label="Tag (singular)" />
-          <FieldLabelRow field="tagPlural" label="Tag (plural)" />
-          <FieldLabelRow field="event" label="Event (singular)" />
-          <FieldLabelRow field="eventPlural" label="Event (plural)" />
-          <FieldLabelRow field="location" label="Location (singular)" />
-          <FieldLabelRow field="locationPlural" label="Location (plural)" />
+          <FieldLabelRow field="cosplayerPlural" label="Artists (Hierarchy Level 1)" />
+          <FieldLabelRow field="characterPlural" label="Subjects (Hierarchy Level 2)" />
+          <FieldLabelRow field="setPlural" label="Albums (Hierarchy Level 3)" />
+          <FieldLabelRow field="tagPlural" label="Tags" />
+          <FieldLabelRow field="eventPlural" label="Events" />
+          <FieldLabelRow field="locationPlural" label="Locations" />
           <Row label="Reset to defaults" hint="Restore all labels and sidebar visibility to factory defaults.">
             <Button
               variant="outline"
@@ -183,11 +177,98 @@ export function SettingsView() {
           </Row>
         </Section>
 
-        {/* Data */}
-        <Section icon={<Sparkles className="h-4 w-4" />} title="Data">
+        {/* Data & Backup */}
+        <Section icon={<Database className="h-4 w-4" />} title="Data & Backup">
+          <Row
+            label="Export Backup"
+            hint="Download a complete JSON backup of all metadata (artists, subjects, albums, tags, media assignments). Original files remain on your disk."
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const data = {
+                    cosplayers: await db.cosplayers.toArray(),
+                    characters: await db.characters.toArray(),
+                    sets: await db.sets.toArray(),
+                    media: (await db.media.toArray()).map((m) => {
+                      const { fileHandle, ...rest } = m;
+                      return rest;
+                    }),
+                    tags: await db.tags.toArray(),
+                    events: await db.events.toArray(),
+                    locations: await db.locations.toArray(),
+                    folders: (await db.folders.toArray()).map((f) => {
+                      const { dirHandle, ...rest } = f;
+                      return rest;
+                    }),
+                    exportedAt: new Date().toISOString(),
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], {
+                    type: "application/json",
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `cosvault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Backup exported successfully");
+                } catch (e: any) {
+                  toast.error(e?.message || "Export failed");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy}
+            >
+              <Download className="h-3.5 w-3.5" /> Export JSON
+            </Button>
+          </Row>
+
+          <Row
+            label="Restore Backup"
+            hint="Import metadata from a JSON backup file."
+          >
+            <label className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1 gap-1">
+              <Upload className="h-3.5 w-3.5" /> Import JSON
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (!confirm("Import backup? This will restore metadata into your local database.")) return;
+                  setBusy(true);
+                  try {
+                    const text = await file.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed.cosplayers) await db.cosplayers.bulkPut(parsed.cosplayers);
+                    if (parsed.characters) await db.characters.bulkPut(parsed.characters);
+                    if (parsed.sets) await db.sets.bulkPut(parsed.sets);
+                    if (parsed.tags) await db.tags.bulkPut(parsed.tags);
+                    if (parsed.events) await db.events.bulkPut(parsed.events);
+                    if (parsed.locations) await db.locations.bulkPut(parsed.locations);
+                    if (parsed.media) await db.media.bulkPut(parsed.media);
+                    toast.success("Backup imported successfully");
+                  } catch (err: any) {
+                    toast.error(err?.message || "Failed to parse backup JSON");
+                  } finally {
+                    setBusy(false);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+          </Row>
+
           <Row
             label="Reset library"
-            hint="Wipes all local data: cosplayers, characters, sets, media, folders. Original files on disk are NOT touched."
+            hint="Wipes all local metadata: artists, subjects, albums, media, folders. Original files on disk are NOT touched."
             danger
           >
             <Button variant="destructive" size="sm" className="gap-1" onClick={resetLibrary} disabled={busy}>
