@@ -17,27 +17,20 @@ import { ChevronRight, Plus, Check, Sparkles } from "lucide-react";
 import { MediaThumbnail } from "@/components/media/MediaThumbnail";
 import { toast } from "sonner";
 
+import { useConfig } from "@/lib/store/config";
+
 export function AssignDialog() {
   const { assignDialogOpen, assignDialogIds, closeAssignDialog } = useUI();
-  const [step, setStep] = useState<"cosplayer" | "character" | "set" | "done">("cosplayer");
+  const labels = useConfig((s) => s.fieldLabels);
 
-  // selections
   const [cosplayerId, setCosplayerId] = useState<string>("");
-  const [cosplayerMode, setCosplayerMode] = useState<"pick" | "create">("pick");
   const [newCosplayerName, setNewCosplayerName] = useState("");
-  const [newCosplayerAlias, setNewCosplayerAlias] = useState("");
 
   const [characterId, setCharacterId] = useState<string>("");
-  const [characterMode, setCharacterMode] = useState<"pick" | "create">("pick");
   const [newCharName, setNewCharName] = useState("");
-  const [newCharFranchise, setNewCharFranchise] = useState("");
 
   const [setId, setSetId] = useState<string>("");
-  const [setMode, setSetMode] = useState<"pick" | "create">("pick");
   const [newSetName, setNewSetName] = useState("");
-  const [newSetDate, setNewSetDate] = useState("");
-  const [newSetLocation, setNewSetLocation] = useState("");
-  const [newSetPhotographer, setNewSetPhotographer] = useState("");
 
   const cosplayers = useLiveQuery(() => db.cosplayers.orderBy("name").toArray()) ?? [];
   const characters = useLiveQuery(
@@ -49,113 +42,78 @@ export function AssignDialog() {
     [characterId],
   ) ?? [];
 
-  // Media being assigned (for preview)
   const mediaItems = useLiveQuery(async () => {
     if (assignDialogIds.length === 0) return [];
     return db.media.bulkGet(assignDialogIds);
   }, [assignDialogIds]) ?? [];
 
-  // Reset when opened
   useEffect(() => {
     if (assignDialogOpen) {
-      setStep("cosplayer");
       setCosplayerId("");
-      setCosplayerMode("pick");
       setNewCosplayerName("");
-      setNewCosplayerAlias("");
       setCharacterId("");
-      setCharacterMode("pick");
       setNewCharName("");
-      setNewCharFranchise("");
       setSetId("");
-      setSetMode("pick");
       setNewSetName("");
-      setNewSetDate("");
-      setNewSetLocation("");
-      setNewSetPhotographer("");
     }
   }, [assignDialogOpen]);
 
   const count = assignDialogIds.length;
 
-  // Step handlers
-  async function goCharacterStep() {
-    if (cosplayerMode === "create") {
+  async function handleAssign() {
+    let finalCosId = cosplayerId;
+    if (!finalCosId) {
       if (!newCosplayerName.trim()) {
-        toast.error("Cosplayer name required");
+        toast.error(`Please pick or type a ${labels.cosplayer || "Artist"} name`);
         return;
       }
-      const id = uid("cosp");
+      finalCosId = uid("cosp");
       await db.cosplayers.put({
-        id,
+        id: finalCosId,
         name: newCosplayerName.trim(),
-        alias: newCosplayerAlias.trim() || undefined,
         tags: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
-      setCosplayerId(id);
     }
-    if (!cosplayerId && cosplayerMode === "pick") {
-      toast.error("Pick a cosplayer");
-      return;
-    }
-    setStep("character");
-  }
-  async function goSetStep() {
-    if (characterMode === "create") {
+
+    let finalCharId = characterId;
+    if (!finalCharId) {
       if (!newCharName.trim()) {
-        toast.error("Character name required");
+        toast.error(`Please pick or type a ${labels.character || "Subject"} name`);
         return;
       }
-      const id = uid("char");
+      finalCharId = uid("char");
       await db.characters.put({
-        id,
-        cosplayerId: cosplayerId,
+        id: finalCharId,
+        cosplayerId: finalCosId,
         name: newCharName.trim(),
-        franchise: newCharFranchise.trim() || undefined,
         tags: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
-      setCharacterId(id);
     }
-    if (!characterId && characterMode === "pick") {
-      toast.error("Pick a character");
-      return;
-    }
-    setStep("set");
-  }
-  async function finish() {
-    if (setMode === "create") {
+
+    let finalSetId = setId;
+    if (!finalSetId) {
       if (!newSetName.trim()) {
-        toast.error("Set name required");
+        toast.error(`Please pick or type an ${labels.set || "Album"} name`);
         return;
       }
-      const id = uid("set");
+      finalSetId = uid("set");
       await db.sets.put({
-        id,
-        characterId,
-        cosplayerId,
+        id: finalSetId,
+        characterId: finalCharId,
+        cosplayerId: finalCosId,
         name: newSetName.trim(),
-        date: newSetDate || undefined,
-        location: newSetLocation || undefined,
-        photographer: newSetPhotographer || undefined,
         tags: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
-      setSetId(id);
-      await commitAssignmentWithIds(cosplayerId, characterId, id);
-      closeAssignDialog();
-    } else {
-      if (!setId) {
-        toast.error("Pick a set");
-        return;
-      }
-      await commitAssignmentWithIds(cosplayerId, characterId, setId);
-      closeAssignDialog();
     }
+
+    await commitAssignmentWithIds(finalCosId, finalCharId, finalSetId);
+    closeAssignDialog();
   }
 
   async function commitAssignmentWithIds(c: string, ch: string, s: string) {
@@ -184,105 +142,105 @@ export function AssignDialog() {
 
   return (
     <Dialog open={assignDialogOpen} onOpenChange={(o) => !o && closeAssignDialog()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="p-6 pb-3 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Organize {count} media
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-6">
+        <DialogHeader className="pb-3 border-b">
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Assign {count} Selected Media
           </DialogTitle>
           <DialogDescription>
-            Bulk-assign these media to a Cosplayer → Character → Set.
+            Quickly organize items into {labels.cosplayer || "Artist"} → {labels.character || "Subject"} → {labels.set || "Album"}.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Breadcrumb steps */}
-        <div className="px-6 py-3 border-b bg-muted/30">
-          <div className="flex items-center gap-1 text-sm">
-            <StepChip active={step === "cosplayer"} done={step !== "cosplayer"}>
-              Cosplayer
-            </StepChip>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <StepChip active={step === "character"} done={step === "set"}>
-              Character
-            </StepChip>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <StepChip active={step === "set"}>Set</StepChip>
+        <div className="space-y-4 py-2 overflow-y-auto max-h-[65vh]">
+          {/* Level 1 */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              1. {labels.cosplayer || "Artist"}
+            </Label>
+            <div className="flex gap-2">
+              <Select value={cosplayerId} onValueChange={(v) => { setCosplayerId(v); setCharacterId(""); setSetId(""); }}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={`Select existing ${labels.cosplayer || "Artist"}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {cosplayers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder={`Or type new ${labels.cosplayer || "Artist"}`}
+                value={newCosplayerName}
+                onChange={(e) => { setNewCosplayerName(e.target.value); if (e.target.value) setCosplayerId(""); }}
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          {/* Level 2 */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              2. {labels.character || "Subject"}
+            </Label>
+            <div className="flex gap-2">
+              <Select
+                value={characterId}
+                disabled={!cosplayerId && !newCosplayerName}
+                onValueChange={(v) => { setCharacterId(v); setSetId(""); }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={`Select existing ${labels.character || "Subject"}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {characters.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder={`Or type new ${labels.character || "Subject"}`}
+                value={newCharName}
+                onChange={(e) => { setNewCharName(e.target.value); if (e.target.value) setCharacterId(""); }}
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          {/* Level 3 */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              3. {labels.set || "Album"}
+            </Label>
+            <div className="flex gap-2">
+              <Select
+                value={setId}
+                disabled={!characterId && !newCharName}
+                onValueChange={(v) => setSetId(v)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={`Select existing ${labels.set || "Album"}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sets.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder={`Or type new ${labels.set || "Album"}`}
+                value={newSetName}
+                onChange={(e) => { setNewSetName(e.target.value); if (e.target.value) setSetId(""); }}
+                className="flex-1"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_280px] overflow-hidden">
-          {/* Left: form */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            {step === "cosplayer" && (
-              <CosplayerStep
-                cosplayers={cosplayers}
-                cosplayerId={cosplayerId}
-                setCosplayerId={setCosplayerId}
-                mode={cosplayerMode}
-                setMode={setCosplayerMode}
-                newName={newCosplayerName}
-                setNewName={setNewCosplayerName}
-                newAlias={newCosplayerAlias}
-                setNewAlias={setNewCosplayerAlias}
-                onContinue={goCharacterStep}
-              />
-            )}
-            {step === "character" && (
-              <CharacterStep
-                characters={characters}
-                characterId={characterId}
-                setCharacterId={setCharacterId}
-                mode={characterMode}
-                setMode={setCharacterMode}
-                newName={newCharName}
-                setNewName={setNewCharName}
-                newFranchise={newCharFranchise}
-                setNewFranchise={setNewCharFranchise}
-                onBack={() => setStep("cosplayer")}
-                onContinue={goSetStep}
-              />
-            )}
-            {step === "set" && (
-              <SetStep
-                sets={sets}
-                setId={setId}
-                setSetId={setSetId}
-                mode={setMode}
-                setMode={setSetMode}
-                newName={newSetName}
-                setNewName={setNewSetName}
-                newDate={newSetDate}
-                setNewDate={setNewSetDate}
-                newLocation={newSetLocation}
-                setNewLocation={setNewSetLocation}
-                newPhotographer={newSetPhotographer}
-                setNewPhotographer={setNewSetPhotographer}
-                onBack={() => setStep("character")}
-                onFinish={finish}
-              />
-            )}
-          </div>
-
-          {/* Right: media preview */}
-          <div className="border-l bg-muted/20 overflow-y-auto max-h-[60vh] p-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-              {count} selected
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {mediaItems.slice(0, 12).map((m) => (
-                m && (
-                  <div key={m.id} className="aspect-[4/3] rounded-md overflow-hidden">
-                    <MediaThumbnail media={m} size="tiny" className="w-full h-full" />
-                  </div>
-                )
-              ))}
-              {mediaItems.length > 12 && (
-                <div className="aspect-[4/3] rounded-md bg-muted/40 grid place-items-center text-xs text-muted-foreground">
-                  +{mediaItems.length - 12} more
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="flex justify-end gap-2 pt-3 border-t">
+          <Button variant="outline" onClick={closeAssignDialog}>Cancel</Button>
+          <Button onClick={handleAssign}>Assign Media</Button>
         </div>
       </DialogContent>
     </Dialog>
